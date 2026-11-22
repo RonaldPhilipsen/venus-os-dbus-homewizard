@@ -321,3 +321,11 @@ def test_same_class_instance_or_other_setting_does_not_restart():
     h.meter.on_setting_changed("custom_name", "", "Heat pump")
     h.meter.on_setting_changed("position", 0, 1)
     assert h.restarts == []
+
+
+def test_generic_energy_meter_flag_for_roles_other_than_grid():
+    # Victron energy meters set /IsGenericEnergyMeter = 1 for every role except grid.
+    heatpump = Harness(stored(class_instance="heatpump:42"), product_type="HWE-KWH1")
+    assert heatpump.meter.service["/IsGenericEnergyMeter"] == 1
+    grid = Harness(stored(class_instance="grid:42"), product_type="HWE-KWH1")
+    assert "/IsGenericEnergyMeter" not in grid.meter.paths

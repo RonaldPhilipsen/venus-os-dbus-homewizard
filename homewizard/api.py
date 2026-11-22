@@ -16,6 +16,7 @@ CA_FILE = os.path.join(
 API_VERSION = "2"
 TOKEN_WAIT_ERROR = "user:creation-not-enabled"
 SERIAL_PATTERN = re.compile(r"[0-9a-fA-F]{12}")
+DEVICE_DOMAIN = "device.homewizard.energy"
 
 
 class ApiError(Exception):
@@ -34,11 +35,12 @@ class DeviceInfo:
     firmware_version: str
 
 
-def make_context(verify_tls: bool, tls_name: Optional[str]) -> ssl.SSLContext:
+def make_context(verify_tls: bool) -> ssl.SSLContext:
     """Build the TLS context.
 
-    Without a TLS name, the context checks the certificate chain only. With a
-    TLS name, it also checks the name (HomeWizard puts it in the common name).
+    With verify_tls, the context checks the certificate chain against the
+    HomeWizard CA. The name check happens after the handshake, see
+    peer_matches, because the meters put their name in different fields.
     """
     if not verify_tls:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -49,29 +51,61 @@ def make_context(verify_tls: bool, tls_name: Optional[str]) -> ssl.SSLContext:
     # The HomeWizard CA is an X.509 v1 certificate, which strict mode (3.13+) rejects.
     ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
     ctx.verify_mode = ssl.CERT_REQUIRED
-    if tls_name:
-        ctx.check_hostname = True
-        ctx.hostname_checks_common_name = True
-    else:
-        ctx.check_hostname = False
+    ctx.check_hostname = False
     return ctx
 
 
-class _Connection(http.client.HTTPSConnection):
-    """HTTPS connection that sends a server name that differs from the address."""
+def _dns_name(tls_name: str) -> Optional[str]:
+    """Map appliance/<type>/<serial> to <serial>.<type>.device.homewizard.energy."""
+    parts = tls_name.split("/")
+    if len(parts) != 3 or parts[0] != "appliance" or not parts[1] or not parts[2]:
+        return None
+    return "%s.%s.%s" % (parts[2], parts[1], DEVICE_DOMAIN)
 
-    def __init__(self, host: str, timeout: float, context: ssl.SSLContext, server_hostname: str):
+
+def peer_matches(cert: Dict[str, Any], tls_name: str) -> bool:
+    """Tell whether a verified certificate belongs to the meter with tls_name.
+
+    The P1 Meter puts appliance/<type>/<serial> in the common name only. The
+    kWh Meter also has a DNS name <serial>.<type>.device.homewizard.energy.
+    OpenSSL ignores the common name when a DNS name exists, so the driver
+    checks both fields itself.
+    """
+    for rdn in cert.get("subject", ()):
+        for key, value in rdn:
+            if key == "commonName" and value == tls_name:
+                return True
+    dns_name = _dns_name(tls_name)
+    if dns_name is None:
+        return False
+    for kind, value in cert.get("subjectAltName", ()):
+        if kind == "DNS" and value.lower() == dns_name.lower():
+            return True
+    return False
+
+
+class _Connection(http.client.HTTPSConnection):
+    """HTTPS connection that checks the meter name after the handshake."""
+
+    def __init__(self, host: str, timeout: float, context: ssl.SSLContext, tls_name: Optional[str]):
         super().__init__(host, 443, timeout=timeout, context=context)
-        self._server_hostname = server_hostname
+        self._tls_name = tls_name
         self._tls_context = context
 
     def connect(self) -> None:
         sock = socket.create_connection((self.host, self.port), self.timeout)
         try:
-            self.sock = self._tls_context.wrap_socket(sock, server_hostname=self._server_hostname)
+            tls = self._tls_context.wrap_socket(sock)
         except BaseException:
             sock.close()
             raise
+        if self._tls_name is not None and self._tls_context.verify_mode == ssl.CERT_REQUIRED:
+            if not peer_matches(tls.getpeercert() or {}, self._tls_name):
+                tls.close()
+                raise ssl.SSLCertVerificationError(
+                    "certificate is not valid for {}".format(self._tls_name)
+                )
+        self.sock = tls
 
 
 def _parse_object(raw: bytes) -> Dict[str, Any]:
@@ -111,10 +145,8 @@ class Client:
         self._conn = None  # type: Any
 
     def set_tls_name(self, name: str) -> None:
-        """Check the host name from the next connection on."""
-        if name != self._tls_name:
-            self._tls_name = name
-            self._context = None
+        """Check the meter name from the next connection on."""
+        self._tls_name = name
         self.close()
 
     def get_device(self) -> DeviceInfo:
@@ -155,8 +187,8 @@ class Client:
 
     def _default_connection(self) -> _Connection:
         if self._context is None:
-            self._context = make_context(self.verify_tls, self._tls_name)
-        return _Connection(self.host, self.timeout, self._context, self._tls_name or self.host)
+            self._context = make_context(self.verify_tls)
+        return _Connection(self.host, self.timeout, self._context, self._tls_name)
 
     def _request(
         self, method: str, path: str, payload: Optional[Dict[str, Any]] = None
