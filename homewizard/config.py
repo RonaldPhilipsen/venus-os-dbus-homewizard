@@ -116,8 +116,20 @@ def get(section, key: str, default: str) -> str:
     return raw if raw else default
 
 
+FLAG_TRUE = ("1", "true", "yes", "on")
+FLAG_FALSE = ("0", "false", "no", "off")
+
+
 def flag(section, key: str, default: str) -> bool:
-    return get(section, key, default).lower() in ("1", "true", "yes", "on")
+    value = get(section, key, default).lower()
+    if value in FLAG_TRUE:
+        return True
+    if value in FLAG_FALSE:
+        return False
+    raise ValueError(
+        "[%s] %s must be one of 1, 0, true, false, yes, no, on, off, not %s"
+        % (section.name, key, value)
+    )
 
 
 def to_int(section_name: str, key: str, raw: str) -> int:

@@ -102,3 +102,19 @@ def test_duplicate_device_instance_is_an_error(tmp_path):
     )
     with pytest.raises(ValueError):
         load_config(write(tmp_path, text))
+
+
+def test_flag_off_is_false(tmp_path):
+    cfg = load_config(write(tmp_path, meter("Reverse = off\n")))
+    assert cfg.meters[0].reverse is False
+
+
+def test_empty_flag_uses_default(tmp_path):
+    cfg = load_config(write(tmp_path, meter("VerifyTls =\n")))
+    assert cfg.meters[0].verify_tls is True
+
+
+def test_invalid_flag_names_section_and_key(tmp_path):
+    with pytest.raises(ValueError) as err:
+        load_config(write(tmp_path, meter("VerifyTls = fasle\n")))
+    assert "METER:hp" in str(err.value) and "VerifyTls" in str(err.value)
