@@ -64,6 +64,7 @@ class Meter:
         self.measurement_paths: List[str] = measurement_paths(self.product, cfg.phase)
 
         product_name = PRODUCT_PREFIX + info.product_name
+        self.product_name = product_name
         first_values: Dict[str, Any] = {
             "/Mgmt/ProcessName": PROCESS_NAME,
             "/Mgmt/ProcessVersion": version,
@@ -147,13 +148,22 @@ class Meter:
         if path == "/Role":
             return self._write_role(value)
         if path == "/CustomName":
-            self.settings["custom_name"] = str(value)
-            return True
+            return self._write_custom_name(str(value))
         if path == "/Position":
             if isinstance(value, int) and not isinstance(value, bool) and value in POSITIONS:
                 self.settings["position"] = int(value)
                 return True
             return False
+        return False
+
+    def _write_custom_name(self, name: str) -> bool:
+        self.settings["custom_name"] = name
+        if name:
+            return True
+        # An empty name shows the product name. vedbus stores the written
+        # value after a True return, so return False to keep the product
+        # name. The writer then gets an error code, but the name is right.
+        self.service["/CustomName"] = self.product_name
         return False
 
     def on_setting_changed(self, setting: str, old: Any, new: Any) -> None:

@@ -148,8 +148,16 @@ def test_custom_name_write():
     h = Harness(stored())
     assert h.meter.on_write("/CustomName", "Heat pump") is True
     assert h.settings["custom_name"] == "Heat pump"
-    assert h.meter.on_write("/CustomName", "") is True
+
+
+
+def test_empty_custom_name_write_shows_product_name():
+    h = Harness(stored(custom_name="Heat pump"))
+    # vedbus writes the raw value after a True return, so the write returns
+    # False to keep the product name that it sets itself.
+    assert h.meter.on_write("/CustomName", "") is False
     assert h.settings["custom_name"] == ""
+    assert h.meter.service["/CustomName"] == "HomeWizard Energy Meter"
 
 
 def test_position_write_range():
