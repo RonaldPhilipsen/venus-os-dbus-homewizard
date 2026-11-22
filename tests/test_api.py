@@ -292,6 +292,8 @@ class FakeContext:
     def __init__(self, peer, verify_mode=ssl.CERT_REQUIRED):
         self.peer = peer
         self.verify_mode = verify_mode
+        # Python 3.8 HTTPSConnection reads this in its constructor.
+        self.check_hostname = False
         self.wrapped = []
 
     def wrap_socket(self, sock, server_hostname=None):
