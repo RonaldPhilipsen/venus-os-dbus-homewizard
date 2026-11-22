@@ -120,7 +120,7 @@ You choose the role of each meter on the GX screen, as you do for a Victron ener
 
 When you change the role on the GX screen, the driver stores the new role and keeps the same device instance. Then the driver restarts. The meter returns with the new role after a few seconds. Data from the other meters also stops for these seconds. To go back to the old role, change it on the GX screen again.
 
-If the SmartEVSE bridge in `../venus-os-dbus-mqtt-smartevse` already shows the same charger, the `evcharger` role counts the energy twice. Use the `evcharger` role only for a kWh meter on a charger that has no driver of its own. If the driver finds another `com.victronenergy.evcharger` service on D-Bus at startup, it writes a warning to the log.
+If the SmartEVSE bridge (dbus-smartevse) already shows the same charger, the `evcharger` role counts the energy twice. Use the `evcharger` role only for a kWh meter on a charger that has no driver of its own. If the driver finds another `com.victronenergy.evcharger` service on D-Bus at startup, it writes a warning to the log.
 
 The heat pump role (`heatpump`) gives the meter its own consumption forecast in Dynamic ESS. The driver uses the `com.victronenergy.heatpump` service type for this role. The owner has not yet tested the minimum Venus OS version for this role on a GX device.
 
@@ -133,7 +133,7 @@ Power is positive for import on the grid side of the meter. Energy import is ene
 
 The owner has not yet tested this sign convention on a GX device.
 
-The energy totals only go up. The driver publishes the totals of the meter as they are. If an energy total goes down, the driver writes a warning to the log and publishes the new value anyway.
+The energy totals only go up. The driver publishes the totals of the meter as they are. If the imported energy total goes down, the driver writes a warning to the log and publishes the new value anyway.
 
 
 ## Offline behavior
@@ -231,9 +231,11 @@ svstat /service/dbus-homewizard
 
 The output looks like `/service/dbus-homewizard: up (pid 5845) 185 seconds`. If the driver cannot start, it logs the cause, waits 60 seconds, and stops. Daemontools then starts it again. If the seconds never go above 60, the driver fails at each start. Read the log to find the cause.
 
+If the setup of one meter fails, the log shows `setup failed` and `the driver restarts in 60 seconds`. The other meters keep running until the restart.
+
 If the log shows `invalid config file`, look at the values in `config.ini`. The message names the key and the section.
 
-If the log shows HTTP 401 or `user:unauthorized`, the token is not valid. Run `pair.py` again, and paste the new token into `config.ini`. Then restart the driver.
+If the log shows `the token is not valid. Run pair.py <host> to get a new token.`, run `pair.py` again, and paste the new token into `config.ini`. Then restart the driver.
 
 If you see nothing in the log, raise the log level. In `/data/etc/dbus-homewizard/dbus-homewizard.py`, change `level=logging.WARNING` to `level=logging.INFO` or `level=logging.DEBUG`. Then restart the driver.
 
