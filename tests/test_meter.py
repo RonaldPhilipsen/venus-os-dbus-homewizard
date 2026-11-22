@@ -6,6 +6,7 @@ from homewizard.config import ROLES, MeterConfig
 from homewizard.mapping import measurement_paths, to_values
 from homewizard.meter import Meter, Registry
 from homewizard.roles import product_for
+from tests.fakes import FakeService
 from tests.fixtures import KWH1, P1_3PHASE
 
 SERIAL = "5c2fafaabbcc"
@@ -40,7 +41,7 @@ class Harness:
     def make_service(self, name, meter):
         self.created_names.append(name)
         self.paths_at_create = list(meter.paths)
-        return {}
+        return FakeService(meter.paths)
 
     def restart(self):
         self.restarts.append(len(self.restarts) + 1)
@@ -79,7 +80,7 @@ def test_first_values():
 def test_paths_are_set_before_make_service():
     h = Harness(stored())
     assert h.paths_at_create == h.meter.paths
-    assert sorted(h.meter.paths) == sorted(h.meter.service)
+    assert sorted(h.meter.paths) == sorted(h.meter.service.values)
 
 
 def test_stored_custom_name_is_used():
