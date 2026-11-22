@@ -15,6 +15,9 @@ class MeterState:
         self.timeout_s = timeout_s
         self.measurement: Optional[Dict[str, Any]] = None
         self.energy_went_down = False
+        # True once a P1 measurement came without a timestamp. Such a
+        # measurement is never new, so the meter stays disconnected.
+        self.missing_timestamp = False
         self._last_timestamp: Any = None
         self._last_new_at: Optional[float] = None
 
@@ -22,7 +25,10 @@ class MeterState:
         """Store m if it is a new measurement. Return True when it is new."""
         if self.product.kind == "p1":
             timestamp = m.get("timestamp")
-            if timestamp is None or timestamp == self._last_timestamp:
+            if timestamp is None:
+                self.missing_timestamp = True
+                return False
+            if timestamp == self._last_timestamp:
                 return False
             self._last_timestamp = timestamp
 

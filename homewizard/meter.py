@@ -60,6 +60,7 @@ class Meter:
         self.state = MeterState(
             self.product, cfg.offline_timeout_s or self.product.default_offline_s
         )
+        self._warned_missing_timestamp = False
         self.measurement_paths: List[str] = measurement_paths(self.product, cfg.phase)
 
         product_name = PRODUCT_PREFIX + info.product_name
@@ -111,23 +112,36 @@ class Meter:
         }
 
     def on_measurement(self, m: Dict[str, Any], now: float) -> None:
-        self.state.accept(m, now)
+        """Store a measurement, and publish it at once when it is new."""
+        is_new = self.state.accept(m, now)
         if self.state.energy_went_down:
             self.log.warning(
                 "meter %s: the imported energy went down. Was the meter reset?",
                 self.info.serial,
             )
             self.state.energy_went_down = False
+        if self.state.missing_timestamp and not self._warned_missing_timestamp:
+            self._warned_missing_timestamp = True
+            self.log.warning(
+                "meter %s: the P1 Meter sends no timestamp, so the meter stays "
+                "disconnected.", self.info.serial,
+            )
+        if is_new:
+            self._publish_values()
 
     def tick(self, now: float) -> None:
+        """Publish the values while the meter is online, or clear them."""
         if self.state.online(now):
-            values = to_values(
-                self.state.measurement, self.product, self.role,
-                self.cfg.phase, self.cfg.reverse,
-            )
-            publish(self.service, self.measurement_paths, values)
+            self._publish_values()
         else:
             publish(self.service, self.measurement_paths, None)
+
+    def _publish_values(self) -> None:
+        values = to_values(
+            self.state.measurement, self.product, self.role,
+            self.cfg.phase, self.cfg.reverse,
+        )
+        publish(self.service, self.measurement_paths, values)
 
     def on_write(self, path: str, value: Any) -> bool:
         if path == "/Role":

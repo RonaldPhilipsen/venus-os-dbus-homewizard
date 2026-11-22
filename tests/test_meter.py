@@ -192,7 +192,8 @@ def test_tick_online_publishes_values():
     expected = to_values(P1_3PHASE, product_for("HWE-P1"), "grid", 1, False)
     for path, value in expected.items():
         assert m.service[path] == value
-    assert m.service["/Connected"] == 1 and m.service["/UpdateIndex"] == 1
+    # One publish from on_measurement, one from tick.
+    assert m.service["/Connected"] == 1 and m.service["/UpdateIndex"] == 2
 
 
 def test_offline_timeout_from_config():
@@ -241,3 +242,32 @@ def test_stored_class_instance_not_valid_uses_config(caplog):
         h = Harness(stored(class_instance="garbage"), role="heatpump", device_instance=45)
     assert h.meter.role == "heatpump" and h.meter.instance == 45
     assert "garbage" in caplog.text
+
+
+def test_new_measurement_is_published_without_tick():
+    h = Harness(stored())
+    h.meter.on_measurement(dict(KWH1), 100.0)
+    svc = h.meter.service
+    assert svc["/Ac/Power"] == 800.0
+    assert svc["/Connected"] == 1 and svc["/UpdateIndex"] == 1
+
+
+def test_stale_p1_measurement_is_not_published():
+    h = Harness(stored(class_instance="grid:40"), product_type="HWE-P1")
+    m = h.meter
+    m.on_measurement(dict(P1_3PHASE), 10.0)
+    assert m.service["/UpdateIndex"] == 1
+    m.on_measurement(dict(P1_3PHASE, power_w=9999.0), 11.0)
+    assert m.service["/UpdateIndex"] == 1
+    assert m.service["/Ac/Power"] == P1_3PHASE["power_w"]
+
+
+def test_p1_without_timestamp_warns_once(caplog):
+    h = Harness(stored(class_instance="grid:40"), product_type="HWE-P1")
+    no_timestamp = {k: v for k, v in P1_3PHASE.items() if k != "timestamp"}
+    with caplog.at_level(logging.WARNING):
+        h.meter.on_measurement(dict(no_timestamp), 1.0)
+        h.meter.on_measurement(dict(no_timestamp), 2.0)
+    assert caplog.text.count("sends no timestamp") == 1
+    assert SERIAL in caplog.text
+    assert h.meter.service["/Connected"] == 0

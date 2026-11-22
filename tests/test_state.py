@@ -22,6 +22,21 @@ def test_p1_without_timestamp_is_not_new():
     assert not s.online(1.0)
 
 
+def test_missing_timestamp_flag():
+    s = MeterState(product_for("HWE-P1"), 15)
+    assert s.missing_timestamp is False
+    s.accept({"timestamp": "t1"}, 0.0)
+    assert s.missing_timestamp is False
+    s.accept({}, 1.0)
+    assert s.missing_timestamp is True
+
+
+def test_missing_timestamp_flag_not_set_for_kwh():
+    s = MeterState(product_for("HWE-KWH1"), 5)
+    s.accept({"power_w": 1}, 0.0)
+    assert s.missing_timestamp is False
+
+
 def test_not_new_measurement_is_not_stored():
     s = MeterState(product_for("HWE-P1"), 15)
     s.accept({"timestamp": "t1", "power_w": 100}, 0.0)
