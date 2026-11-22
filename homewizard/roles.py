@@ -1,4 +1,5 @@
 """Product, role and naming rules for HomeWizard devices."""
+
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Tuple
 
@@ -33,7 +34,7 @@ def product_for(product_type: str) -> Product:
     try:
         return PRODUCTS[product_type]
     except KeyError:
-        raise ValueError("unknown HomeWizard product type: %s" % product_type)
+        raise ValueError("unknown HomeWizard product type: %s" % product_type) from None
 
 
 def tls_name(product: Product, serial: str) -> str:
@@ -56,7 +57,7 @@ def parse_class_instance(value: str) -> Tuple[str, int]:
     try:
         instance = int(instance_text)
     except ValueError:
-        raise ValueError("device instance must be a whole number, not %s" % value)
+        raise ValueError("device instance must be a whole number, not %s" % value) from None
     return role, instance
 
 
@@ -65,7 +66,4 @@ def format_class_instance(role: str, instance: int) -> str:
 
 
 def other_evchargers(bus_names: Iterable[str], own_name: str) -> List[str]:
-    return [
-        name for name in bus_names
-        if name.startswith(EVCHARGER_PREFIX) and name != own_name
-    ]
+    return [name for name in bus_names if name.startswith(EVCHARGER_PREFIX) and name != own_name]

@@ -3,6 +3,7 @@
 The meter writes to mappings only (the service and the settings), so this
 module does not import dbus, vedbus or settingsdevice.
 """
+
 import logging
 from typing import Any, Callable, Dict, Iterable, List, MutableMapping
 
@@ -96,7 +97,8 @@ class Meter:
                 log.warning(
                     "meter %s has role evcharger, and %s are also EV chargers. "
                     "The charger counts twice in the AC loads.",
-                    info.serial, ", ".join(others),
+                    info.serial,
+                    ", ".join(others),
                 )
 
     @staticmethod
@@ -124,8 +126,8 @@ class Meter:
         if self.state.missing_timestamp and not self._warned_missing_timestamp:
             self._warned_missing_timestamp = True
             self.log.warning(
-                "meter %s: the P1 Meter sends no timestamp, so the meter stays "
-                "disconnected.", self.info.serial,
+                "meter %s: the P1 Meter sends no timestamp, so the meter stays disconnected.",
+                self.info.serial,
             )
         if is_new:
             self._publish_values()
@@ -138,9 +140,15 @@ class Meter:
             publish(self.service, self.measurement_paths, None)
 
     def _publish_values(self) -> None:
+        measurement = self.state.measurement
+        if measurement is None:
+            return
         values = to_values(
-            self.state.measurement, self.product, self.role,
-            self.cfg.phase, self.cfg.reverse,
+            measurement,
+            self.product,
+            self.role,
+            self.cfg.phase,
+            self.cfg.reverse,
         )
         publish(self.service, self.measurement_paths, values)
 
@@ -192,14 +200,18 @@ class Meter:
         except ValueError:
             self.log.error(
                 "meter %s: stored ClassAndVrmInstance %r is not valid, using the config file",
-                self.info.serial, stored,
+                self.info.serial,
+                stored,
             )
             role = self.cfg.role or self.product.default_role
             instance = self.cfg.device_instance
         if role not in self.product.allowed_roles:
             self.log.error(
                 "meter %s: stored role %s is not allowed for %s, using %s",
-                self.info.serial, role, self.product.product_type, self.product.default_role,
+                self.info.serial,
+                role,
+                self.product.product_type,
+                self.product.default_role,
             )
             role = self.product.default_role
         return role, instance

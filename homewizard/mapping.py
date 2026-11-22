@@ -1,4 +1,5 @@
 """Map HomeWizard measurements to Victron D-Bus paths."""
+
 from typing import Any, Dict, List, Optional
 
 from homewizard.roles import Product

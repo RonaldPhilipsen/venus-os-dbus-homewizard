@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Get an API token from a HomeWizard meter. Run it on the GX device."""
+
 import argparse
 import functools
 import os
@@ -21,9 +22,7 @@ def main(argv=None):
         default=user_name(socket.gethostname()),
         help="user name stored with the token (default: from the host name)",
     )
-    parser.add_argument(
-        "--insecure", action="store_true", help="skip the TLS certificate checks"
-    )
+    parser.add_argument("--insecure", action="store_true", help="skip the TLS certificate checks")
     args = parser.parse_args(argv)
 
     print("Press the button on the meter now.")

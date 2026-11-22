@@ -23,7 +23,9 @@ def test_kwh3_publishes_three_phases():
 
 def test_pvinverter_flips_sign_and_swaps_energy():
     v = to_values(KWH3, product_for("HWE-KWH3"), "pvinverter", 1, False)
-    assert v["/Ac/Power"] == -KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_export_kwh"]
+    assert (
+        v["/Ac/Power"] == -KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_export_kwh"]
+    )
     assert v["/Ac/Energy/Reverse"] == KWH3["energy_import_kwh"]
     assert v["/Ac/L1/Power"] == -KWH3["power_l1_w"]
 
@@ -37,12 +39,16 @@ def test_flip_keeps_voltage_current_and_frequency():
 
 def test_reverse_cancels_pvinverter_flip():
     v = to_values(KWH3, product_for("HWE-KWH3"), "pvinverter", 1, True)
-    assert v["/Ac/Power"] == KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_import_kwh"]
+    assert (
+        v["/Ac/Power"] == KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_import_kwh"]
+    )
 
 
 def test_reverse_flips_heatpump():
     v = to_values(KWH3, product_for("HWE-KWH3"), "heatpump", 1, True)
-    assert v["/Ac/Power"] == -KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_export_kwh"]
+    assert (
+        v["/Ac/Power"] == -KWH3["power_w"] and v["/Ac/Energy/Forward"] == KWH3["energy_export_kwh"]
+    )
 
 
 def test_p1_single_phase_leaves_l2_l3_empty():

@@ -52,8 +52,9 @@ def test_pair_times_out():
         calls.append(host)
         return None
 
-    token = pair("192.0.2.5", "local/venus_test", wait_s=60, request=request,
-                 sleep=clock.sleep, clock=clock)
+    token = pair(
+        "192.0.2.5", "local/venus_test", wait_s=60, request=request, sleep=clock.sleep, clock=clock
+    )
 
     assert token is None
     assert clock.now >= 60

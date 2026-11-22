@@ -63,11 +63,12 @@ class _Connection(http.client.HTTPSConnection):
     def __init__(self, host: str, timeout: float, context: ssl.SSLContext, server_hostname: str):
         super().__init__(host, 443, timeout=timeout, context=context)
         self._server_hostname = server_hostname
+        self._tls_context = context
 
     def connect(self) -> None:
         sock = socket.create_connection((self.host, self.port), self.timeout)
         try:
-            self.sock = self._context.wrap_socket(sock, server_hostname=self._server_hostname)
+            self.sock = self._tls_context.wrap_socket(sock, server_hostname=self._server_hostname)
         except BaseException:
             sock.close()
             raise
@@ -132,7 +133,8 @@ class Client:
         if not isinstance(product_type, str) or not product_type:
             self.close()
             raise ApiError(
-                "device info has a product type that is not valid: {!r}".format(product_type))
+                "device info has a product type that is not valid: {!r}".format(product_type)
+            )
         return DeviceInfo(
             product_name=str(product_name),
             product_type=product_type,
@@ -156,7 +158,9 @@ class Client:
             self._context = make_context(self.verify_tls, self._tls_name)
         return _Connection(self.host, self.timeout, self._context, self._tls_name or self.host)
 
-    def _request(self, method: str, path: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _request(
+        self, method: str, path: str, payload: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         status, raw = self._exchange(method, path, payload)
         try:
             if status != 200:

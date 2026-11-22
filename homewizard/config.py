@@ -1,4 +1,5 @@
 """Configuration loader for dbus-homewizard."""
+
 import configparser
 import math
 import re
@@ -89,7 +90,7 @@ def load_meter(section, section_name: str, index: int) -> MeterConfig:
         offline_timeout = positive_float(section_name, "OfflineTimeoutSeconds", offline_raw)
 
     return MeterConfig(
-        name=section_name[len(METER_PREFIX):],
+        name=section_name[len(METER_PREFIX) :],
         host=host,
         token=token,
         role=role,
@@ -136,14 +137,16 @@ def to_int(section_name: str, key: str, raw: str) -> int:
     try:
         return int(raw)
     except ValueError:
-        raise ValueError("[%s] %s must be a whole number, not %s" % (section_name, key, raw))
+        raise ValueError(
+            "[%s] %s must be a whole number, not %s" % (section_name, key, raw)
+        ) from None
 
 
 def positive_float(section_name: str, key: str, raw: str) -> float:
     try:
         value = float(raw)
     except ValueError:
-        raise ValueError("[%s] %s must be a number, not %s" % (section_name, key, raw))
+        raise ValueError("[%s] %s must be a number, not %s" % (section_name, key, raw)) from None
     if not (math.isfinite(value) and value > 0):
         raise ValueError("[%s] %s must be greater than 0, not %s" % (section_name, key, raw))
     return value

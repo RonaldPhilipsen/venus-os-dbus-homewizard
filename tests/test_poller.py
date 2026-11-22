@@ -56,7 +56,7 @@ def make_poller(client, interval_s=1.0, clock=None, sleep=None):
         on_device=rec.devices.append,
         on_measurement=rec.measurements.append,
         on_error=rec.errors.append,
-        **kwargs
+        **kwargs,
     )
     return poller, rec
 
@@ -174,6 +174,7 @@ def test_loop_survives_unexpected_error_and_stops():
     def sleep(seconds):
         waits.append(seconds)
         if len(waits) == 3:
+            assert poller is not None
             poller.stop()
 
     poller, rec = make_poller(fake, sleep=sleep)
@@ -199,7 +200,9 @@ def test_start_and_stop_thread():
     poller.start()
     assert measured.wait(0.5)
     poller.stop()
-    poller._thread.join(0.5)
-    assert not poller._thread.is_alive()
+    thread = poller._thread
+    assert thread is not None
+    thread.join(0.5)
+    assert not thread.is_alive()
     assert fake.closed >= 1
     assert time.monotonic() - started < 1.0

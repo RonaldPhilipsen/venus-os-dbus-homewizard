@@ -1,5 +1,5 @@
+import dataclasses
 import logging
-
 
 from homewizard.api import DeviceInfo
 from homewizard.config import ROLES, MeterConfig
@@ -14,18 +14,30 @@ LOG = logging.getLogger("test_meter")
 
 
 def make_cfg(**changes):
-    values = dict(
-        name="hp", host="192.168.1.10", token="0" * 32, role=None, device_instance=40,
-        custom_name=None, phase=1, reverse=False, position=0, poll_interval_s=1.0,
-        offline_timeout_s=None, verify_tls=True,
+    cfg = MeterConfig(
+        name="hp",
+        host="192.168.1.10",
+        token="0" * 32,
+        role=None,
+        device_instance=40,
+        custom_name=None,
+        phase=1,
+        reverse=False,
+        position=0,
+        poll_interval_s=1.0,
+        offline_timeout_s=None,
+        verify_tls=True,
     )
-    values.update(changes)
-    return MeterConfig(**values)
+    return dataclasses.replace(cfg, **changes)
 
 
 def make_info(product_type="HWE-KWH1"):
-    return DeviceInfo(product_name="Energy Meter", product_type=product_type,
-                      serial=SERIAL, firmware_version="4.19")
+    return DeviceInfo(
+        product_name="Energy Meter",
+        product_type=product_type,
+        serial=SERIAL,
+        firmware_version="4.19",
+    )
 
 
 class Harness:
@@ -35,8 +47,16 @@ class Harness:
         self.paths_at_create = None
         self.restarts = []
         self.cfg = make_cfg(**cfg_changes)
-        self.meter = Meter(self.cfg, make_info(product_type), settings, self.make_service,
-                           self.restart, LOG, bus_names=bus_names, version="1.2.3")
+        self.meter = Meter(
+            self.cfg,
+            make_info(product_type),
+            settings,
+            self.make_service,
+            self.restart,
+            LOG,
+            bus_names=bus_names,
+            version="1.2.3",
+        )
 
     def make_service(self, name, meter):
         self.created_names.append(name)
@@ -80,7 +100,9 @@ def test_first_values():
 def test_paths_are_set_before_make_service():
     h = Harness(stored())
     assert h.paths_at_create == h.meter.paths
-    assert sorted(h.meter.paths) == sorted(h.meter.service.values)
+    service = h.meter.service
+    assert isinstance(service, FakeService)
+    assert sorted(h.meter.paths) == sorted(service.values)
 
 
 def test_stored_custom_name_is_used():
@@ -148,7 +170,6 @@ def test_custom_name_write():
     h = Harness(stored())
     assert h.meter.on_write("/CustomName", "Heat pump") is True
     assert h.settings["custom_name"] == "Heat pump"
-
 
 
 def test_empty_custom_name_write_shows_product_name():
@@ -224,8 +245,11 @@ def test_energy_down_logs_warning(caplog):
 
 def test_evcharger_role_warns_about_other_charger(caplog):
     other = "com.victronenergy.evcharger.smartevse_1"
-    names = [other, "com.victronenergy.evcharger.homewizard_" + SERIAL,
-             "com.victronenergy.grid.homewizard_x"]
+    names = [
+        other,
+        "com.victronenergy.evcharger.homewizard_" + SERIAL,
+        "com.victronenergy.grid.homewizard_x",
+    ]
     with caplog.at_level(logging.WARNING):
         Harness(stored(class_instance="evcharger:42"), bus_names=names)
     assert other in caplog.text and "twice" in caplog.text
@@ -233,9 +257,13 @@ def test_evcharger_role_warns_about_other_charger(caplog):
 
 def test_evcharger_role_without_other_charger_is_quiet(caplog):
     with caplog.at_level(logging.WARNING):
-        Harness(stored(class_instance="evcharger:42"),
-                bus_names=["com.victronenergy.grid.x",
-                           "com.victronenergy.evcharger.homewizard_" + SERIAL])
+        Harness(
+            stored(class_instance="evcharger:42"),
+            bus_names=[
+                "com.victronenergy.grid.x",
+                "com.victronenergy.evcharger.homewizard_" + SERIAL,
+            ],
+        )
     assert caplog.text == ""
 
 

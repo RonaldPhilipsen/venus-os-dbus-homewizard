@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Venus OS driver: HomeWizard energy meters as Victron meters on D-Bus."""
+
 import configparser
 import logging
 import os
@@ -67,8 +68,9 @@ def make_service(name, bus):
 
 
 def main():
-    logging.basicConfig(stream=sys.stdout, level=logging.WARNING,
-                        format="%(levelname)s %(name)s %(message)s")
+    logging.basicConfig(
+        stream=sys.stdout, level=logging.WARNING, format="%(levelname)s %(name)s %(message)s"
+    )
     try:
         start()
     except Exception as e:
@@ -81,9 +83,13 @@ def make_meter_service(name, meter, bus):
     svc = make_service(name, bus)
     for path in meter.paths:
         writeable = path in WRITEABLE_PATHS
-        svc.add_path(path, None, gettextcallback=text_for(path),
-                     writeable=writeable,
-                     onchangecallback=meter.on_write if writeable else None)
+        svc.add_path(
+            path,
+            None,
+            gettextcallback=text_for(path),
+            writeable=writeable,
+            onchangecallback=meter.on_write if writeable else None,
+        )
     return svc
 
 
@@ -121,7 +127,8 @@ class MeterSlot:
 
     def stop(self):
         self.stopped = True
-        self.poller.stop()
+        if self.poller is not None:
+            self.poller.stop()
 
 
 def setup_meter(slot, info, bus, version):
@@ -144,15 +151,22 @@ def setup_meter(slot, info, bus, version):
             meter.on_setting_changed(setting, old, new)
 
     try:
-        settings = SettingsDevice(
-            bus, Meter.settings_spec(slot.cfg, info), on_setting_changed)
-        meter = Meter(slot.cfg, info, settings, make_service_for_meter,
-                      restart, log, bus_names=bus.list_names(), version=version)
-        if hasattr(meter.service, "register"):
-            meter.service.register()
+        settings = SettingsDevice(bus, Meter.settings_spec(slot.cfg, info), on_setting_changed)
+        meter = Meter(
+            slot.cfg,
+            info,
+            settings,
+            make_service_for_meter,
+            restart,
+            log,
+            bus_names=bus.list_names(),
+            version=version,
+        )
+        register = getattr(meter.service, "register", None)
+        if register is not None:
+            register()
     except Exception:
-        log.exception("meter %s in [METER:%s]: setup failed",
-                      info.serial, slot.cfg.name)
+        log.exception("meter %s in [METER:%s]: setup failed", info.serial, slot.cfg.name)
         meter = None  # ignore later settings changes of this meter
         slot.stop()
         if service_bus is not None:
@@ -189,14 +203,20 @@ def start():
             if slot.stopped:
                 return False
             if not registry.claim(info.serial, slot.cfg.name):
-                log.error("meter %s in [METER:%s] is the same meter as in [METER:%s]. "
-                          "Ignoring [METER:%s].", info.serial, slot.cfg.name,
-                          owners[info.serial], slot.cfg.name)
+                log.error(
+                    "meter %s in [METER:%s] is the same meter as in [METER:%s]. "
+                    "Ignoring [METER:%s].",
+                    info.serial,
+                    slot.cfg.name,
+                    owners[info.serial],
+                    slot.cfg.name,
+                )
                 slot.stop()
                 return False
             owners[info.serial] = slot.cfg.name
             slot.meter = setup_meter(slot, info, bus, version)
             return False
+
         return on_device
 
     def measurement_handler(slot):
@@ -208,6 +228,7 @@ def start():
             except Exception:
                 log.exception("meter [METER:%s]: measurement failed", slot.cfg.name)
             return False
+
         return on_measurement
 
     def error_handler(slot):
@@ -215,26 +236,34 @@ def start():
             if slot.stopped:
                 return False
             now = time.monotonic()
-            if (slot.last_error_log is not None
-                    and now - slot.last_error_log < ERROR_LOG_INTERVAL_S):
+            if slot.last_error_log is not None and now - slot.last_error_log < ERROR_LOG_INTERVAL_S:
                 return False
             slot.last_error_log = now
             if isinstance(e, AuthError):
-                log.warning("meter [METER:%s] at %s: the token is not valid. "
-                            "Run pair.py %s to get a new token.",
-                            slot.cfg.name, slot.cfg.host, slot.cfg.host)
+                log.warning(
+                    "meter [METER:%s] at %s: the token is not valid. "
+                    "Run pair.py %s to get a new token.",
+                    slot.cfg.name,
+                    slot.cfg.host,
+                    slot.cfg.host,
+                )
             else:
-                log.warning("meter [METER:%s] at %s: %s",
-                            slot.cfg.name, slot.cfg.host, e)
+                log.warning("meter [METER:%s] at %s: %s", slot.cfg.name, slot.cfg.host, e)
             return False
+
         return on_error
 
     for meter_cfg in cfg.meters:
         slot = MeterSlot(meter_cfg)
         client = Client(meter_cfg.host, meter_cfg.token, meter_cfg.verify_tls)
-        slot.poller = Poller(client, meter_cfg.poll_interval_s, GLib.idle_add,
-                             device_handler(slot), measurement_handler(slot),
-                             error_handler(slot))
+        slot.poller = Poller(
+            client,
+            meter_cfg.poll_interval_s,
+            GLib.idle_add,
+            device_handler(slot),
+            measurement_handler(slot),
+            error_handler(slot),
+        )
         slots.append(slot)
 
     # 2. Update D-Bus every second.
@@ -258,19 +287,27 @@ def start():
             if slot.stopped:
                 continue
             if meter is None:
-                log.warning("sign of life: [METER:%s] at %s: no device info yet",
-                            slot.cfg.name, slot.cfg.host)
+                log.warning(
+                    "sign of life: [METER:%s] at %s: no device info yet",
+                    slot.cfg.name,
+                    slot.cfg.host,
+                )
                 continue
-            log.warning("sign of life: serial=%s connected=%s power=%s role=%s",
-                        meter.info.serial, meter.service["/Connected"],
-                        meter.service["/Ac/Power"], meter.role)
+            log.warning(
+                "sign of life: serial=%s connected=%s power=%s role=%s",
+                meter.info.serial,
+                meter.service["/Connected"],
+                meter.service["/Ac/Power"],
+                meter.role,
+            )
         return True
 
     if cfg.sign_of_life_minutes > 0:
         GLib.timeout_add_seconds(cfg.sign_of_life_minutes * 60, sign_of_life)
 
     for slot in slots:
-        slot.poller.start()
+        if slot.poller is not None:
+            slot.poller.start()
 
 
 if __name__ == "__main__":

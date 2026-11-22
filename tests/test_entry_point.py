@@ -2,6 +2,7 @@
 
 No real D-Bus is used. The stubs record the calls that the entry point makes.
 """
+
 import importlib.util
 import os
 import sys
@@ -12,8 +13,9 @@ import pytest
 from homewizard.api import DeviceInfo
 from homewizard.config import MeterConfig
 
-ENTRY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                     "dbus-homewizard.py")
+ENTRY = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dbus-homewizard.py"
+)
 SERIAL = "5c2fafaabbcc"
 
 
@@ -99,46 +101,63 @@ def entry(monkeypatch):
         buses.append(bus)
         return bus
 
+    # Write to __dict__: ty does not allow new attributes on a module object.
     dbus = types.ModuleType("dbus")
-    dbus.SystemBus = system_bus
-    dbus.SessionBus = session_bus
+    dbus.__dict__["SystemBus"] = system_bus
+    dbus.__dict__["SessionBus"] = session_bus
     mainloop = types.ModuleType("dbus.mainloop")
     mainloop_glib = types.ModuleType("dbus.mainloop.glib")
-    mainloop_glib.DBusGMainLoop = lambda set_as_default=False: None
+    mainloop_glib.__dict__["DBusGMainLoop"] = lambda set_as_default=False: None
     gi = types.ModuleType("gi")
     gi_repository = types.ModuleType("gi.repository")
     glib = StubGLib()
-    gi_repository.GLib = glib
+    gi_repository.__dict__["GLib"] = glib
     vedbus = types.ModuleType("vedbus")
-    vedbus.VeDbusService = StubService
+    vedbus.__dict__["VeDbusService"] = StubService
     settingsdevice = types.ModuleType("settingsdevice")
-    settingsdevice.SettingsDevice = StubSettings
-    for name, module in (("dbus", dbus), ("dbus.mainloop", mainloop),
-                         ("dbus.mainloop.glib", mainloop_glib), ("gi", gi),
-                         ("gi.repository", gi_repository), ("vedbus", vedbus),
-                         ("settingsdevice", settingsdevice)):
+    settingsdevice.__dict__["SettingsDevice"] = StubSettings
+    for name, module in (
+        ("dbus", dbus),
+        ("dbus.mainloop", mainloop),
+        ("dbus.mainloop.glib", mainloop_glib),
+        ("gi", gi),
+        ("gi.repository", gi_repository),
+        ("vedbus", vedbus),
+        ("settingsdevice", settingsdevice),
+    ):
         monkeypatch.setitem(sys.modules, name, module)
     monkeypatch.delenv("DBUS_SESSION_BUS_ADDRESS", raising=False)
 
     spec = importlib.util.spec_from_file_location("dbus_homewizard_entry", ENTRY)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    module.test_glib = glib
-    module.test_buses = buses
+    module.__dict__["test_glib"] = glib
+    module.__dict__["test_buses"] = buses
     return module
 
 
 def make_cfg(name="hp"):
     return MeterConfig(
-        name=name, host="192.168.1.10", token="0" * 32, role=None, device_instance=40,
-        custom_name=None, phase=1, reverse=False, position=0, poll_interval_s=1.0,
-        offline_timeout_s=None, verify_tls=True,
+        name=name,
+        host="192.168.1.10",
+        token="0" * 32,
+        role=None,
+        device_instance=40,
+        custom_name=None,
+        phase=1,
+        reverse=False,
+        position=0,
+        poll_interval_s=1.0,
+        offline_timeout_s=None,
+        verify_tls=True,
     )
 
 
 def make_info(serial=SERIAL):
-    return DeviceInfo(product_name="Energy Meter", product_type="HWE-KWH1",
-                      serial=serial, firmware_version="4.19")
+    return DeviceInfo(
+        product_name="Energy Meter", product_type="HWE-KWH1", serial=serial, firmware_version="4.19"
+    )
 
 
 class StubPoller:
@@ -197,6 +216,7 @@ def test_setup_failure_stops_the_slot_and_schedules_one_restart(entry, caplog):
 def test_setup_failure_closes_the_private_bus(entry, monkeypatch):
     def fail(*args, **kwargs):
         raise RuntimeError("name in use")
+
     monkeypatch.setattr(StubService, "register", fail)
     slot = make_slot(entry)
     assert entry.setup_meter(slot, make_info(), StubBus("system", False), "1") is None

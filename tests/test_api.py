@@ -186,7 +186,9 @@ def test_request_token_waits_on_403():
 
 def test_request_token_returns_token():
     conn = FakeConnection([(200, b'{"token":"ABCDEF0123456789","name":"local/venus_x"}')])
-    assert request_token("h", "local/venus_x", connection_factory=lambda: conn) == "ABCDEF0123456789"
+    assert (
+        request_token("h", "local/venus_x", connection_factory=lambda: conn) == "ABCDEF0123456789"
+    )
     method, path, body, headers = conn.requests[0]
     assert (method, path) == ("POST", "/api/user")
     assert json.loads(body) == {"name": "local/venus_x"}
@@ -246,16 +248,19 @@ def device_body(**changes):
     return json.dumps(data).encode()
 
 
-@pytest.mark.parametrize("changes", [
-    {"serial": None},
-    {"serial": "5c2fafaabbc"},
-    {"serial": "5c2fafaabbccd"},
-    {"serial": "5c2fafaabbcg"},
-    {"serial": 123456789012},
-    {"product_type": None},
-    {"product_type": ""},
-    {"product_type": 5},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"serial": None},
+        {"serial": "5c2fafaabbc"},
+        {"serial": "5c2fafaabbccd"},
+        {"serial": "5c2fafaabbcg"},
+        {"serial": 123456789012},
+        {"product_type": None},
+        {"product_type": ""},
+        {"product_type": 5},
+    ],
+)
 def test_device_info_not_valid_raises_api_error(changes):
     conn = FakeConnection([(200, device_body(**changes))])
     with pytest.raises(ApiError):
@@ -274,12 +279,12 @@ def test_default_connection_uses_host_then_tls_name():
     first = client._default_connection()
     assert (first.host, first.port, first.timeout) == ("192.168.1.10", 443, 2.0)
     assert first._server_hostname == "192.168.1.10"
-    assert first._context.check_hostname is False
+    assert first._tls_context.check_hostname is False
     client.set_tls_name("appliance/p1dongle/5c2fafaabbcc")
     second = client._default_connection()
     assert second._server_hostname == "appliance/p1dongle/5c2fafaabbcc"
-    assert second._context is not first._context
-    assert second._context.check_hostname is True
+    assert second._tls_context is not first._tls_context
+    assert second._tls_context.check_hostname is True
 
 
 @pytest.mark.parametrize("tls_name", [None, "appliance/p1dongle/x"])

@@ -1,4 +1,5 @@
 """Test doubles with the same narrow API as the real Venus OS classes."""
+
 from typing import Any, Dict, Iterable
 
 

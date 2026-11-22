@@ -60,7 +60,8 @@ def test_energy_check_skips_not_new_p1_measurement():
 
 
 def test_offline_uses_injected_monotonic_clock():
-    # a "now" value lower than the last accept (a clock that went back) is online, never an exception
+    # A "now" lower than the last accept (a clock that went back) is online.
+    # It never raises.
     s = MeterState(product_for("HWE-KWH1"), 5)
     s.accept({}, 100.0)
     assert s.online(50.0)

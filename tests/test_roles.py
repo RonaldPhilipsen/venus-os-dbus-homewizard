@@ -32,7 +32,10 @@ def test_unknown_product_raises():
 
 def test_names():
     assert tls_name(product_for("HWE-KWH1"), "5c2fafaabbcc") == "appliance/energymeter/5c2fafaabbcc"
-    assert service_name("heatpump", "5c2fafaabbcc") == "com.victronenergy.heatpump.homewizard_5c2fafaabbcc"
+    assert (
+        service_name("heatpump", "5c2fafaabbcc")
+        == "com.victronenergy.heatpump.homewizard_5c2fafaabbcc"
+    )
     assert settings_base("5c2fafaabbcc") == "/Settings/Devices/homewizard_5c2fafaabbcc"
 
 

@@ -97,8 +97,10 @@ def test_invalid_meter_value_names_section_and_key(tmp_path, text, key):
 
 
 def test_duplicate_device_instance_is_an_error(tmp_path):
-    text = meter("DeviceInstance = 50\n", section="METER:a") + "\n" + meter(
-        "DeviceInstance = 50\n", section="METER:b"
+    text = (
+        meter("DeviceInstance = 50\n", section="METER:a")
+        + "\n"
+        + meter("DeviceInstance = 50\n", section="METER:b")
     )
     with pytest.raises(ValueError):
         load_config(write(tmp_path, text))

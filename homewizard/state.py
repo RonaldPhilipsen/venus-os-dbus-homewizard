@@ -1,4 +1,5 @@
 """Freshness and offline state for one HomeWizard meter."""
+
 from typing import Any, Dict, Optional
 
 from homewizard.roles import Product

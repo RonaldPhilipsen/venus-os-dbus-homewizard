@@ -3,6 +3,7 @@
 publish uses only [] get and [] set, because VeDbusService has no other
 mapping methods (no .get). So this module does not import dbus or vedbus.
 """
+
 from typing import Any, Callable, Dict, List, MutableMapping, Optional
 
 WRITEABLE_PATHS = ("/Role", "/CustomName", "/Position")
@@ -13,6 +14,7 @@ def _unit(fmt: str) -> Callable[[str, Any], str]:
         if value is None:
             return "---"
         return fmt.format(value)
+
     return text
 
 
@@ -50,8 +52,9 @@ def _read(svc: MutableMapping[str, Any], path: str) -> Any:
         return None
 
 
-def publish(svc: MutableMapping[str, Any], paths: List[str],
-            values: Optional[Dict[str, Any]]) -> None:
+def publish(
+    svc: MutableMapping[str, Any], paths: List[str], values: Optional[Dict[str, Any]]
+) -> None:
     """Write the values of paths, or clear them when values is None.
 
     Sets /Connected to 1 with values, or 0 without. Then counts /UpdateIndex

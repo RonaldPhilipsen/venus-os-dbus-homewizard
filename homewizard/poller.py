@@ -2,7 +2,7 @@
 
 import threading
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 from homewizard.api import ApiError, AuthError, DeviceInfo
 from homewizard.roles import product_for, tls_name
