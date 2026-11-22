@@ -18,6 +18,7 @@ GitHub repository: `https://github.com/<owner>/<repo>`. The owner of the reposit
 1. [Restart](#restart)
 1. [Debugging](#debugging)
 1. [Compatibility](#compatibility)
+1. [Development](#development)
 1. [Versioning](#versioning)
 
 
@@ -245,6 +246,43 @@ If you see nothing in the log, raise the log level. In `/data/etc/dbus-homewizar
 The target version is Venus OS v3.85. The owner has not yet tested the driver on a GX device. The owner adds the tested versions here.
 
 The driver needs Python 3.8 or newer. It uses only the standard library of Python, plus the `velib_python` files and the `dbus` and `GLib` modules of the GX device. The tests also run on Python 3.12.
+
+
+## Development
+
+The project uses [mise](https://mise.jdx.dev) to install the development tools. `mise.toml` pins their versions:
+
+- [ruff](https://docs.astral.sh/ruff/) checks and formats the code.
+- [ty](https://docs.astral.sh/ty/) checks the types.
+- [prek](https://prek.j178.dev) runs ruff and ty as the hooks in `.pre-commit-config.yaml`.
+
+To set up a new clone, do these steps in the project folder:
+
+1. Install the tools.
+
+    ```bash
+    mise install
+    ```
+
+2. Install the git hook. The hook then runs the checks before each commit.
+
+    ```bash
+    mise exec -- prek install
+    ```
+
+3. Run all checks on all files.
+
+    ```bash
+    mise exec -- prek run --all-files
+    ```
+
+4. Run the tests.
+
+    ```bash
+    python3 -m pytest -q
+    ```
+
+The GitHub workflow `Qualify` runs the same prek checks and the tests for each pull request. The release zip does not contain `mise.toml`, `pyproject.toml`, or `.pre-commit-config.yaml`.
 
 
 ## Versioning
