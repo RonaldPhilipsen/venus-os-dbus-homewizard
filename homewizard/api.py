@@ -3,6 +3,7 @@
 import http.client
 import json
 import os
+import re
 import socket
 import ssl
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ CA_FILE = os.path.join(
 
 API_VERSION = "2"
 TOKEN_WAIT_ERROR = "user:creation-not-enabled"
+SERIAL_PATTERN = re.compile(r"[0-9a-fA-F]{12}")
 
 
 class ApiError(Exception):
@@ -117,15 +119,26 @@ class Client:
     def get_device(self) -> DeviceInfo:
         data = self._request("GET", "/api")
         try:
-            return DeviceInfo(
-                product_name=str(data["product_name"]),
-                product_type=str(data["product_type"]),
-                serial=str(data["serial"]),
-                firmware_version=str(data["firmware_version"]),
-            )
+            product_name = data["product_name"]
+            product_type = data["product_type"]
+            serial = data["serial"]
+            firmware_version = data["firmware_version"]
         except KeyError as exc:
             self.close()
             raise ApiError("device info misses {}".format(exc)) from exc
+        if not isinstance(serial, str) or not SERIAL_PATTERN.fullmatch(serial):
+            self.close()
+            raise ApiError("device info has a serial that is not valid: {!r}".format(serial))
+        if not isinstance(product_type, str) or not product_type:
+            self.close()
+            raise ApiError(
+                "device info has a product type that is not valid: {!r}".format(product_type))
+        return DeviceInfo(
+            product_name=str(product_name),
+            product_type=product_type,
+            serial=serial.lower(),
+            firmware_version=str(firmware_version),
+        )
 
     def get_measurement(self) -> Dict[str, Any]:
         return self._request("GET", "/api/measurement")

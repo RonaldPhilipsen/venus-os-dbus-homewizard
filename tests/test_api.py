@@ -240,6 +240,35 @@ def test_device_info_missing_field_raises_api_error():
     assert conn.closed
 
 
+def device_body(**changes):
+    data = json.loads(DEVICE_BODY)
+    data.update(changes)
+    return json.dumps(data).encode()
+
+
+@pytest.mark.parametrize("changes", [
+    {"serial": None},
+    {"serial": "5c2fafaabbc"},
+    {"serial": "5c2fafaabbccd"},
+    {"serial": "5c2fafaabbcg"},
+    {"serial": 123456789012},
+    {"product_type": None},
+    {"product_type": ""},
+    {"product_type": 5},
+])
+def test_device_info_not_valid_raises_api_error(changes):
+    conn = FakeConnection([(200, device_body(**changes))])
+    with pytest.raises(ApiError):
+        Client("h", TOKEN, connection_factory=lambda: conn).get_device()
+    assert conn.closed
+
+
+def test_device_serial_is_lower_case():
+    conn = FakeConnection([(200, device_body(serial="5C2FAFAABBCC"))])
+    info = Client("h", TOKEN, connection_factory=lambda: conn).get_device()
+    assert info.serial == "5c2fafaabbcc"
+
+
 def test_default_connection_uses_host_then_tls_name():
     client = Client("192.168.1.10", TOKEN, timeout=2.0)
     first = client._default_connection()
