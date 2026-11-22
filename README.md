@@ -258,32 +258,26 @@ The project uses [mise](https://mise.jdx.dev) to install the development tools. 
 
 To set up a new clone, do these steps in the project folder:
 
-1. Install the tools.
+1. Install the tools. A `postinstall` hook in `mise.toml` then runs `prek install`, so the checks run before each commit.
 
     ```bash
     mise install
     ```
 
-2. Install the git hook. The hook then runs the checks before each commit.
-
-    ```bash
-    mise exec -- prek install
-    ```
-
-3. Make sure that ty can find pytest, because ty also checks the tests. ty uses a `.venv` folder in the project folder by itself.
+2. Make sure that ty can find pytest, because ty also checks the tests. ty uses a `.venv` folder in the project folder by itself.
 
     ```bash
     python3 -m venv .venv
     .venv/bin/pip install pytest
     ```
 
-4. Run all checks on all files.
+3. Run all checks on all files.
 
     ```bash
     mise exec -- prek run --all-files
     ```
 
-5. Run the tests.
+4. Run the tests.
 
     ```bash
     python3 -m pytest -q
