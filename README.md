@@ -284,7 +284,7 @@ To set up a new clone, do these steps in the project folder:
     python3 -m pytest -q
     ```
 
-The GitHub workflow `Qualify` runs the same prek checks and the tests for each pull request. The release zip does not contain `mise.toml`, `pyproject.toml`, or `.pre-commit-config.yaml`.
+The GitHub workflow `Qualify` runs the same prek checks and the tests for each pull request. The release zip does not contain `mise.toml`, `pyproject.toml`, `renovate.json`, or `.pre-commit-config.yaml`.
 
 
 ## Versioning

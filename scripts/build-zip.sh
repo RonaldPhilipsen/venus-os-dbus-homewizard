@@ -28,7 +28,7 @@ mkdir "$stage/dbus-homewizard"
 cd "$root"
 # Tracked files only. Leave out tests, CI, docs, this script, and dotfiles.
 git ls-files -z \
-    | grep -zvE '^(tests|\.github|docs|scripts)/|^(mise\.toml|pyproject\.toml)$|(^|/)\.[^/]*$' \
+    | grep -zvE '^(tests|\.github|docs|scripts)/|^(mise\.toml|pyproject\.toml|renovate\.json)$|(^|/)\.[^/]*$' \
     | xargs -0 -I{} cp --parents {} "$stage/dbus-homewizard/"
 
 # Write the version into the staged copy only.
