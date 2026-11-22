@@ -251,3 +251,9 @@ def test_default_connection_uses_host_then_tls_name():
     assert second._server_hostname == "appliance/p1dongle/5c2fafaabbcc"
     assert second._context is not first._context
     assert second._context.check_hostname is True
+
+
+@pytest.mark.parametrize("tls_name", [None, "appliance/p1dongle/x"])
+def test_context_accepts_v1_ca_without_strict_mode(tls_name):
+    ctx = make_context(True, tls_name)
+    assert ctx.verify_flags & ssl.VERIFY_X509_STRICT == 0

@@ -44,6 +44,8 @@ def make_context(verify_tls: bool, tls_name: Optional[str]) -> ssl.SSLContext:
         ctx.verify_mode = ssl.CERT_NONE
         return ctx
     ctx = ssl.create_default_context(cafile=CA_FILE)
+    # The HomeWizard CA is an X.509 v1 certificate, which strict mode (3.13+) rejects.
+    ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
     ctx.verify_mode = ssl.CERT_REQUIRED
     if tls_name:
         ctx.check_hostname = True
