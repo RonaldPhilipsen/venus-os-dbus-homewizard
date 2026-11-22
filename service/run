@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "*** starting dbus-homewizard ***"
+exec python3 /data/etc/dbus-homewizard/dbus-homewizard.py 2>&1

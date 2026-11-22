@@ -1,0 +1,86 @@
+name: 'Qualify'
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+    branches: [main]
+  push:
+    branches-ignore:
+      - main
+
+concurrency:
+  group: 'qualify-${{ github.ref }}'
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  test:
+    name: test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # The hosted runner image no longer ships Python 3.8, so the tests run
+    # in the official Python container for each version.
+    container: python:${{ matrix.python-version }}-slim
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: install pytest
+        run: pip install --root-user-action=ignore pytest
+      - name: run tests
+        run: python -m pytest -q
+
+  lint:
+    name: ruff and ty (prek)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      # ty reads the tests, so it must find pytest. ty uses .venv by itself.
+      - name: install pytest for ty
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet pytest
+      - name: run prek
+        run: prek run --all-files --show-diff-on-failure
+
+  shell:
+    name: check shell scripts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: check shell scripts
+        run: |
+          git ls-files -z '*.sh' 'service/run' 'service/log/run' \
+            | xargs -0 -n1 bash -n
+
+  semVersie:
+    name: semVersie
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # add the version label to the PR
+      issues: write # create the label in the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: semVersie
+        uses: RonaldPhilipsen/semVersie@d9fb879058f41166c1b18f7974eaed5620dd596b # v2.3.6
+        with:
+          add-pr-label: true

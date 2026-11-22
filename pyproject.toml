@@ -1,0 +1,24 @@
+# Tool configuration only. The driver is not a Python package.
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+extend-exclude = ["ext"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# Keep the %-formatting style of the SmartEVSE driver.
+ignore = ["UP031", "UP032"]
+
+[tool.ty.environment]
+python-version = "3.8"
+
+[tool.ty.src]
+exclude = ["ext"]
+
+# The GX device provides these modules. They are not installed on a PC.
+[[tool.ty.overrides]]
+include = ["dbus-homewizard.py"]
+
+[tool.ty.overrides.rules]
+import-not-found = "ignore"
