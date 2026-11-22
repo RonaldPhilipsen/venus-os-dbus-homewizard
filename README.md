@@ -270,13 +270,20 @@ To set up a new clone, do these steps in the project folder:
     mise exec -- prek install
     ```
 
-3. Run all checks on all files.
+3. Make sure that ty can find pytest, because ty also checks the tests. ty uses a `.venv` folder in the project folder by itself.
+
+    ```bash
+    python3 -m venv .venv
+    .venv/bin/pip install pytest
+    ```
+
+4. Run all checks on all files.
 
     ```bash
     mise exec -- prek run --all-files
     ```
 
-4. Run the tests.
+5. Run the tests.
 
     ```bash
     python3 -m pytest -q
