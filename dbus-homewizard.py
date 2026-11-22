@@ -27,8 +27,10 @@ from homewizard.poller import Poller  # noqa: E402
 FATAL_DELAY_S = 60
 ERROR_LOG_INTERVAL_S = 60.0
 RESTART_DELAY_MS = 1000
+SETUP_RESTART_DELAY_S = 60
 
 log = logging.getLogger("homewizard")
+_setup_restart_scheduled = False
 
 
 def fatal(message, *args, exc_info=False):
@@ -44,12 +46,24 @@ def system_bus():
     return dbus.SystemBus()
 
 
-def make_service(name):
+def private_bus():
+    """Open a new D-Bus connection for one meter service.
+
+    vedbus exports the object path "/" on the connection of each service, so
+    two services on one shared connection fail. dbus-modbus-client also uses a
+    private connection for each device.
+    """
+    if "DBUS_SESSION_BUS_ADDRESS" in os.environ:
+        return dbus.SessionBus(private=True)
+    return dbus.SystemBus(private=True)
+
+
+def make_service(name, bus):
     """Create a VeDbusService for both newer (register=False) and older vedbus."""
     try:
-        return VeDbusService(name, register=False)
+        return VeDbusService(name, bus=bus, register=False)
     except TypeError:
-        return VeDbusService(name)
+        return VeDbusService(name, bus=bus)
 
 
 def main():
@@ -62,9 +76,9 @@ def main():
     GLib.MainLoop().run()
 
 
-def make_meter_service(name, meter):
+def make_meter_service(name, meter, bus):
     """Create the service with all paths of the meter. The caller registers it."""
-    svc = make_service(name)
+    svc = make_service(name, bus)
     for path in meter.paths:
         writeable = path in WRITEABLE_PATHS
         svc.add_path(path, None, gettextcallback=text_for(path),
@@ -81,6 +95,20 @@ def restart():
     GLib.timeout_add(RESTART_DELAY_MS, lambda: os._exit(0))
 
 
+def restart_after_setup_failure():
+    """Exit after SETUP_RESTART_DELAY_S, so daemontools tries the setup again.
+
+    The other meters keep running until then. Only the first failure
+    schedules the exit.
+    """
+    global _setup_restart_scheduled
+    if _setup_restart_scheduled:
+        return
+    _setup_restart_scheduled = True
+    log.error("the driver restarts in %d seconds", SETUP_RESTART_DELAY_S)
+    GLib.timeout_add_seconds(SETUP_RESTART_DELAY_S, lambda: os._exit(1))
+
+
 class MeterSlot:
     """One config section: its poller, and its Meter once the device is known."""
 
@@ -94,6 +122,41 @@ class MeterSlot:
     def stop(self):
         self.stopped = True
         self.poller.stop()
+
+
+def setup_meter(slot, info, bus, version):
+    """Create the settings, the Meter and its service. Return the Meter.
+
+    The settings use the shared connection bus. The service gets a private
+    connection. On a failure, stop the slot, close the private connection,
+    schedule a restart and return None.
+    """
+    service_bus = None
+
+    def make_service_for_meter(name, meter):
+        nonlocal service_bus
+        service_bus = private_bus()
+        return make_meter_service(name, meter, service_bus)
+
+    try:
+        settings = SettingsDevice(
+            bus, Meter.settings_spec(slot.cfg, info), lambda *a: None)
+        meter = Meter(slot.cfg, info, settings, make_service_for_meter,
+                      restart, log, bus_names=bus.list_names(), version=version)
+        if hasattr(meter.service, "register"):
+            meter.service.register()
+    except Exception:
+        log.exception("meter %s in [METER:%s]: setup failed",
+                      info.serial, slot.cfg.name)
+        slot.stop()
+        if service_bus is not None:
+            try:
+                service_bus.close()
+            except Exception:
+                pass
+        restart_after_setup_failure()
+        return None
+    return meter
 
 
 def start():
@@ -126,21 +189,7 @@ def start():
                 slot.stop()
                 return False
             owners[info.serial] = slot.cfg.name
-            try:
-                settings = SettingsDevice(
-                    bus, Meter.settings_spec(slot.cfg, info),
-                    lambda *a: None)
-                meter = Meter(slot.cfg, info, settings, make_meter_service,
-                              restart, log, bus_names=bus.list_names(),
-                              version=version)
-                if hasattr(meter.service, "register"):
-                    meter.service.register()
-            except Exception:
-                log.exception("meter %s in [METER:%s]: setup failed",
-                              info.serial, slot.cfg.name)
-                slot.stop()
-                return False
-            slot.meter = meter
+            slot.meter = setup_meter(slot, info, bus, version)
             return False
         return on_device
 
