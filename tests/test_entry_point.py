@@ -202,3 +202,15 @@ def test_setup_failure_closes_the_private_bus(entry, monkeypatch):
     assert entry.setup_meter(slot, make_info(), StubBus("system", False), "1") is None
     private = [bus for bus in entry.test_buses if bus.private]
     assert len(private) == 1 and private[0].closed
+
+
+def test_class_instance_change_restarts(entry):
+    slot = make_slot(entry)
+    meter = entry.setup_meter(slot, make_info(), StubBus("system", False), "1")
+    callback = StubSettings.callbacks[-1]
+    callback("custom_name", "", "Heat pump")
+    callback("class_instance", "acload:40", "acload:40")
+    assert entry.test_glib.timeouts == []
+    callback("class_instance", "acload:40", "heatpump:40")
+    assert [ms for ms, _ in entry.test_glib.timeouts] == [1000]
+    assert meter.role == "acload"

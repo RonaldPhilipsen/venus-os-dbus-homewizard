@@ -156,6 +156,16 @@ class Meter:
             return False
         return False
 
+    def on_setting_changed(self, setting: str, old: Any, new: Any) -> None:
+        """Handle a change in localsettings, made by another process.
+
+        A new role or instance needs a new service name, so restart.
+        """
+        if setting != "class_instance":
+            return
+        if new != format_class_instance(self.role, self.instance):
+            self.restart()
+
     def _write_role(self, value: Any) -> bool:
         if not isinstance(value, str) or value not in self.product.allowed_roles:
             return False

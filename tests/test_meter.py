@@ -271,3 +271,17 @@ def test_p1_without_timestamp_warns_once(caplog):
     assert caplog.text.count("sends no timestamp") == 1
     assert SERIAL in caplog.text
     assert h.meter.service["/Connected"] == 0
+
+
+def test_class_instance_change_from_localsettings_restarts():
+    h = Harness(stored())
+    h.meter.on_setting_changed("class_instance", "heatpump:42", "grid:42")
+    assert h.restarts == [1]
+
+
+def test_same_class_instance_or_other_setting_does_not_restart():
+    h = Harness(stored())
+    h.meter.on_setting_changed("class_instance", "grid:42", "heatpump:42")
+    h.meter.on_setting_changed("custom_name", "", "Heat pump")
+    h.meter.on_setting_changed("position", 0, 1)
+    assert h.restarts == []

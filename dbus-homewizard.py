@@ -132,15 +132,20 @@ def setup_meter(slot, info, bus, version):
     schedule a restart and return None.
     """
     service_bus = None
+    meter = None
 
-    def make_service_for_meter(name, meter):
+    def make_service_for_meter(name, new_meter):
         nonlocal service_bus
         service_bus = private_bus()
-        return make_meter_service(name, meter, service_bus)
+        return make_meter_service(name, new_meter, service_bus)
+
+    def on_setting_changed(setting, old, new):
+        if meter is not None:
+            meter.on_setting_changed(setting, old, new)
 
     try:
         settings = SettingsDevice(
-            bus, Meter.settings_spec(slot.cfg, info), lambda *a: None)
+            bus, Meter.settings_spec(slot.cfg, info), on_setting_changed)
         meter = Meter(slot.cfg, info, settings, make_service_for_meter,
                       restart, log, bus_names=bus.list_names(), version=version)
         if hasattr(meter.service, "register"):
@@ -148,6 +153,7 @@ def setup_meter(slot, info, bus, version):
     except Exception:
         log.exception("meter %s in [METER:%s]: setup failed",
                       info.serial, slot.cfg.name)
+        meter = None  # ignore later settings changes of this meter
         slot.stop()
         if service_bus is not None:
             try:
