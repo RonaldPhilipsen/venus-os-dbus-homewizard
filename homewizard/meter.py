@@ -82,6 +82,9 @@ class Meter:
             "/Connected": 0,
             "/UpdateIndex": 0,
         }
+        if self.role != "grid":
+            # Victron energy meters set this for every role except grid.
+            first_values["/IsGenericEnergyMeter"] = 1
         for path in self.measurement_paths:
             first_values[path] = None
 
