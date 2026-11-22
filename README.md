@@ -20,6 +20,7 @@ GitHub repository: `https://github.com/<owner>/<repo>`. The owner of the reposit
 1. [Compatibility](#compatibility)
 1. [Development](#development)
 1. [Versioning](#versioning)
+1. [Screenshots](#screenshots)
 
 
 ## Disclaimer
@@ -297,3 +298,18 @@ Each pull request title must follow the [conventional commits](https://www.conve
 - `feat!: ...` marks a breaking change. It raises the major number (1.2.3 becomes 2.0.0).
 
 When a pull request merges into `main`, a GitHub workflow builds `dbus-homewizard.zip` and publishes it as a release. The version shows on the GX device in the `/Mgmt/ProcessVersion` path, together with the Python version. A copy of the code that is not from a release shows `0.0.0-dev`.
+
+
+## Screenshots
+
+The GX device shows each meter as its own device. This image shows a 1-phase kWh meter with the heat pump role. The page shows the voltage, the current, and the power of the phase, and the total energy.
+
+![GX page of a kWh meter with the heat pump role](docs/images/device.png)
+
+The Setup page of the meter shows the role.
+
+![Setup page of the meter with the role Heat pump](docs/images/setup.png)
+
+Select the role to change it. The list shows the six roles of a kWh meter. After a change, the driver restarts, and the meter comes back with the new role within a few seconds.
+
+![Role list with Heat pump selected](docs/images/role.png)
